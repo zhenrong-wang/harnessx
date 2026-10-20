@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+
+service ContextService { rpc BuildContext(BuildContextRequest) returns (BuildContextResponse); }
+
+message BuildContextRequest {
+  RequestContext context = 1;
+  string run_id = 2;
+  string step_id = 3;
+  string input = 4;
+  string instructions = 5;
+  repeated Message history = 6;
+  repeated ToolResult observations = 7;
+  repeated ToolDefinition tools = 8;
+  int64 max_context_tokens = 9;
+  int64 reserved_output_tokens = 10;
+  map<string, string> metadata = 11;
+}
+
+message BuildContextResponse {
+  repeated Message messages = 1;
+  int64 estimated_tokens = 2;
+  bool compacted = 3;
+  bytes audit_json = 4;
+}

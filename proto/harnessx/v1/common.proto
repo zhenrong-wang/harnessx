@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "google/protobuf/timestamp.proto";
+
+message RequestContext {
+  string request_id = 1;
+  string tenant_id = 2;
+  string actor_id = 3;
+  string trace_id = 4;
+  string idempotency_key = 5;
+  map<string, string> metadata = 6;
+}
+
+message ErrorInfo {
+  string reason = 1;
+  string message = 2;
+  bool retryable = 3;
+  map<string, string> metadata = 4;
+}
+
+message Usage {
+  int64 input_tokens = 1;
+  int64 output_tokens = 2;
+  int64 total_tokens = 3;
+  map<string, int64> details = 4;
+}
+
+message ToolDefinition {
+  string name = 1;
+  string description = 2;
+  bytes input_schema_json = 3;
+  bytes output_schema_json = 4;
+  map<string, string> annotations = 5;
+}
+
+message ToolCall {
+  string id = 1;
+  string name = 2;
+  bytes arguments_json = 3;
+}
+
+message ToolCallList { repeated ToolCall calls = 1; }
+
+message ToolResult {
+  string call_id = 1;
+  string name = 2;
+  string status = 3;
+  bytes content = 4;
+  string mime_type = 5;
+  ErrorInfo error = 6;
+  repeated ArtifactRef artifacts = 7;
+  map<string, string> metadata = 8;
+}
+
+message ToolResultList { repeated ToolResult results = 1; }
+
+message Message {
+  string role = 1;
+  repeated ContentPart content = 2;
+  repeated ToolCall tool_calls = 3;
+  string tool_call_id = 4;
+  string name = 5;
+}
+
+// MessageList is the stable envelope used when a list of messages must be
+// persisted or transported as one protobuf JSON value.
+message MessageList { repeated Message messages = 1; }
+
+message ContentPart {
+  string type = 1;
+  string text = 2;
+  bytes data = 3;
+  string mime_type = 4;
+  string uri = 5;
+}
+
+message ArtifactRef {
+  string volume_id = 1;
+  string path = 2;
+  string media_type = 3;
+  int64 size_bytes = 4;
+  string digest = 5;
+}
+
+enum RunStatus {
+  RUN_STATUS_UNSPECIFIED = 0;
+  RUN_STATUS_QUEUED = 1;
+  RUN_STATUS_IN_PROGRESS = 2;
+  RUN_STATUS_COMPLETED = 3;
+  RUN_STATUS_FAILED = 4;
+  RUN_STATUS_CANCELLED = 5;
+  RUN_STATUS_REQUIRES_ACTION = 6;
+  RUN_STATUS_LIMIT_REACHED = 7;
+}
+
+message Run {
+  string id = 1;
+  string tenant_id = 2;
+  RunStatus status = 3;
+  string model = 4;
+  repeated Message output = 5;
+  Usage usage = 6;
+  ErrorInfo error = 7;
+  google.protobuf.Timestamp created_at = 8;
+  google.protobuf.Timestamp completed_at = 9;
+  map<string, string> metadata = 10;
+  string policy_snapshot_json = 11;
+}
+
+message Event {
+  string id = 1;
+  string tenant_id = 2;
+  string run_id = 3;
+  string step_id = 4;
+  int64 sequence = 5;
+  string type = 6;
+  bytes payload_json = 7;
+  google.protobuf.Timestamp occurred_at = 8;
+  map<string, string> metadata = 9;
+}

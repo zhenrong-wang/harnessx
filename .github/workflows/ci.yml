@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: arduino/setup-protoc@v3
+        with:
+          version: "25.x"
+      - name: Install protobuf generators
+        run: make proto-tools
+      - name: Verify generated contracts
+        run: |
+          make proto-generate
+          git diff --exit-code -- gen/go
+      - name: Test
+        run: go test -race ./...
+      - name: Vet
+        run: go vet ./...
+      - name: Build
+        run: go build ./...
+      - name: Validate Compose
+        run: docker compose -f deployments/docker-compose/compose.yaml config --quiet

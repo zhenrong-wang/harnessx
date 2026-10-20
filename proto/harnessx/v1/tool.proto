@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+
+service ToolService {
+  rpc ListTools(ListToolsRequest) returns (ListToolsResponse);
+  rpc ExecuteTools(ExecuteToolsRequest) returns (ExecuteToolsResponse);
+  rpc CancelToolCalls(CancelToolCallsRequest) returns (CancelToolCallsResponse);
+}
+
+message ListToolsRequest { RequestContext context = 1; repeated string names = 2; }
+message ListToolsResponse { repeated ToolDefinition tools = 1; }
+
+message ExecuteToolsRequest {
+  RequestContext context = 1;
+  string run_id = 2;
+  string step_id = 3;
+  repeated ToolCall calls = 4;
+  repeated ToolDefinition allowed_tools = 5;
+  string volume_id = 6;
+  int32 max_parallelism = 7;
+  map<string, string> metadata = 8;
+}
+
+message ExecuteToolsResponse { repeated ToolResult results = 1; Usage usage = 2; }
+message CancelToolCallsRequest { RequestContext context = 1; string run_id = 2; repeated string call_ids = 3; }
+message CancelToolCallsResponse { repeated string cancelled_call_ids = 1; }

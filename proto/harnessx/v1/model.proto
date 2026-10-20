@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+
+service ModelService {
+  rpc Generate(GenerateRequest) returns (GenerateResponse);
+  rpc StreamGenerate(GenerateRequest) returns (stream ModelStreamEvent);
+  rpc ListModels(ListModelsRequest) returns (ListModelsResponse);
+  rpc GetCapabilities(GetModelCapabilitiesRequest) returns (ModelCapabilities);
+}
+
+message GenerateRequest {
+  RequestContext context = 1;
+  string run_id = 2;
+  string step_id = 3;
+  repeated string models = 4;
+  repeated Message messages = 5;
+  repeated ToolDefinition tools = 6;
+  string tool_choice = 7;
+  int32 max_output_tokens = 8;
+  bytes response_schema_json = 9;
+  map<string, string> metadata = 10;
+}
+
+message GenerateResponse {
+  string provider = 1;
+  string model = 2;
+  Message message = 3;
+  string finish_reason = 4;
+  Usage usage = 5;
+  bytes provider_response_json = 6;
+  repeated ModelAttempt attempts = 7;
+}
+
+message ModelAttempt {
+  string provider = 1;
+  string model = 2;
+  string status = 3;
+  int64 duration_ms = 4;
+  ErrorInfo error = 5;
+  Usage usage = 6;
+}
+
+message ModelStreamEvent {
+  int64 sequence = 1;
+  string type = 2;
+  string provider = 3;
+  string model = 4;
+  string text_delta = 5;
+  ToolCall tool_call_delta = 6;
+  GenerateResponse completed = 7;
+  ErrorInfo error = 8;
+}
+
+message ListModelsRequest { RequestContext context = 1; }
+message ListModelsResponse { repeated ModelDescriptor models = 1; }
+
+message ModelDescriptor {
+  string id = 1;
+  string provider = 2;
+  string provider_model = 3;
+  ModelCapabilities capabilities = 4;
+  map<string, string> metadata = 5;
+}
+
+message GetModelCapabilitiesRequest { RequestContext context = 1; string model = 2; }
+
+message ModelCapabilities {
+  bool streaming = 1;
+  bool tool_calling = 2;
+  bool parallel_tool_calling = 3;
+  bool structured_output = 4;
+  bool vision = 5;
+  int64 max_context_tokens = 6;
+  int64 max_output_tokens = 7;
+}

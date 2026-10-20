@@ -1,0 +1,17 @@
+{
+  "tools": [
+    {
+      "name": "weather",
+      "description": "Get current weather for a city.",
+      "input_schema": {
+        "type": "object",
+        "properties": { "city": { "type": "string" } },
+        "required": ["city"],
+        "additionalProperties": false
+      },
+      "endpoint": "http://weather-service:8080/invoke",
+      "headers_from_env": { "Authorization": "WEATHER_TOOL_AUTHORIZATION" },
+      "timeout": "10s"
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+openapi: 3.1.0
+info:
+  title: HarnessX API
+  version: 0.1.0
+  description: Public HTTP API for durable server-side agent runs.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+paths:
+  /v1/runs:
+    post:
+      summary: Execute a durable run
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/CreateRun' }
+      responses:
+        '200':
+          description: Terminal run, or an existing idempotent run.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Run' }
+        '400': { $ref: '#/components/responses/Error' }
+        '401': { $ref: '#/components/responses/Error' }
+  /v1/runs/{run_id}:
+    get:
+      summary: Get a run
+      parameters:
+        - $ref: '#/components/parameters/RunID'
+      responses:
+        '200':
+          description: Run state.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Run' }
+        '404': { $ref: '#/components/responses/Error' }
+  /v1/runs/{run_id}/cancel:
+    post:
+      summary: Request cancellation of an active run
+      parameters:
+        - $ref: '#/components/parameters/RunID'
+      responses:
+        '200': { description: Cancellation result. }
+  /v1/runs/{run_id}/events:
+    get:
+      summary: Replay ordered run events
+      parameters:
+        - $ref: '#/components/parameters/RunID'
+        - name: after_sequence
+          in: query
+          schema: { type: integer, minimum: 0, default: 0 }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 1000, default: 100 }
+      responses:
+        '200': { description: Ordered event page. }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+  parameters:
+    RunID:
+      name: run_id
+      in: path
+      required: true
+      schema: { type: string }
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: false
+      schema: { type: string }
+  schemas:
+    CreateRun:
+      type: object
+      required: [input, models]
+      properties:
+        input: { type: string, minLength: 1 }
+        instructions: { type: string }
+        models:
+          type: array
+          minItems: 1
+          items: { type: string, description: provider/model }
+        tools:
+          type: array
+          items: { $ref: '#/components/schemas/Tool' }
+        max_steps: { type: integer, minimum: 1, maximum: 64, default: 8 }
+        max_output_tokens: { type: integer, minimum: 1, maximum: 131072, default: 4096 }
+        volume_id: { type: string }
+        metadata: { type: object, additionalProperties: { type: string } }
+        stream: { type: boolean, description: Return text/event-stream lifecycle events. }
+    Tool:
+      type: object
+      required: [name, input_schema]
+      properties:
+        name: { type: string }
+        description: { type: string }
+        input_schema: { type: object }
+        output_schema: { type: object }
+        annotations: { type: object, additionalProperties: { type: string } }
+    Run:
+      type: object
+      required: [id, tenant_id, status]
+      additionalProperties: true
+      properties:
+        id: { type: string }
+        tenant_id: { type: string }
+        status: { type: string }
+        model: { type: string }
+  responses:
+    Error:
+      description: Error envelope.
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: object
+                properties:
+                  reason: { type: string }
+                  message: { type: string }

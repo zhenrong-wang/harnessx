@@ -1,0 +1,23 @@
+{
+  "providers": [
+    {
+      "name": "local-openai-compatible",
+      "type": "openai-compatible",
+      "base_url": "http://host.docker.internal:11434/v1",
+      "api_key_env": "LOCAL_MODEL_API_KEY",
+      "timeout": "2m",
+      "models": [
+        {
+          "id": "configured-model",
+          "streaming": true,
+          "tool_calling": true,
+          "parallel_tool_calling": true,
+          "structured_output": true,
+          "vision": false,
+          "max_context_tokens": 128000,
+          "max_output_tokens": 16384
+        }
+      ]
+    }
+  ]
+}

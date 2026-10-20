@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+
+service EventService {
+  rpc AppendEvent(AppendEventRequest) returns (AppendEventResponse);
+  rpc ListEvents(ListEventsRequest) returns (ListEventsResponse);
+  rpc SubscribeEvents(SubscribeEventsRequest) returns (stream Event);
+}
+
+message AppendEventRequest { RequestContext context = 1; Event event = 2; }
+message AppendEventResponse { Event event = 1; }
+message ListEventsRequest { RequestContext context = 1; string run_id = 2; int64 after_sequence = 3; int32 limit = 4; }
+message ListEventsResponse { repeated Event events = 1; bool has_more = 2; }
+message SubscribeEventsRequest { RequestContext context = 1; string run_id = 2; int64 after_sequence = 3; }

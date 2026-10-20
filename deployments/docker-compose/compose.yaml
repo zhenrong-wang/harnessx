@@ -1,0 +1,158 @@
+name: harnessx
+
+x-service: &service
+  build:
+    context: ../..
+  restart: unless-stopped
+  environment:
+    LOG_LEVEL: ${LOG_LEVEL:-info}
+  networks: [harnessx]
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: harnessx
+      POSTGRES_USER: harnessx
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-harnessx-dev-only}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U harnessx -d harnessx"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [harnessx]
+
+  migrate:
+    build:
+      context: ../..
+      args: { PACKAGE: ./cmd/migrate }
+    environment:
+      DATABASE_URL: postgres://harnessx:${POSTGRES_PASSWORD:-harnessx-dev-only}@postgres:5432/harnessx?sslmode=disable
+    command: ["-dir", "/app/db/migrations"]
+    depends_on:
+      postgres: { condition: service_healthy }
+    restart: "no"
+    networks: [harnessx]
+
+  volume-init:
+    image: alpine:3.20
+    command: ["sh", "-c", "chown 10001:10001 /data && chmod 0750 /data"]
+    user: "0:0"
+    volumes:
+      - volume-data:/data
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+    restart: "no"
+    networks: [harnessx]
+
+  context-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/context-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      CONTEXT_CORE_GRPC_ADDR: :9102
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  model-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/model-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      MODEL_CORE_GRPC_ADDR: :9101
+      MODEL_CORE_CONFIG: /etc/harnessx/model.json
+      LOCAL_MODEL_API_KEY: ${LOCAL_MODEL_API_KEY:-}
+    extra_hosts: ["host.docker.internal:host-gateway"]
+    volumes:
+      - ./model.json:/etc/harnessx/model.json:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  tool-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/tool-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TOOL_CORE_GRPC_ADDR: :9103
+      TOOL_CORE_CONFIG: /etc/harnessx/tools.json
+    volumes:
+      - ./tools.json:/etc/harnessx/tools.json:ro
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  event-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/event-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      EVENT_CORE_GRPC_ADDR: :9104
+      EVENT_CORE_DATABASE_URL: postgres://harnessx:${POSTGRES_PASSWORD:-harnessx-dev-only}@postgres:5432/harnessx?sslmode=disable
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+
+  volume-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/volume-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      VOLUME_CORE_GRPC_ADDR: :9105
+      VOLUME_CORE_DATABASE_URL: postgres://harnessx:${POSTGRES_PASSWORD:-harnessx-dev-only}@postgres:5432/harnessx?sslmode=disable
+      VOLUME_CORE_LOCAL_ROOT: /var/lib/harnessx/volumes
+    volumes:
+      - volume-data:/var/lib/harnessx/volumes
+    depends_on:
+      volume-init: { condition: service_completed_successfully }
+
+  harness-core:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/harness-core/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      HARNESS_CORE_GRPC_ADDR: :9100
+      HARNESS_CORE_DATABASE_URL: postgres://harnessx:${POSTGRES_PASSWORD:-harnessx-dev-only}@postgres:5432/harnessx?sslmode=disable
+      CONTEXT_CORE_GRPC_TARGET: context-core:9102
+      MODEL_CORE_GRPC_TARGET: model-core:9101
+      TOOL_CORE_GRPC_TARGET: tool-core:9103
+      EVENT_CORE_GRPC_TARGET: event-core:9104
+    depends_on:
+      migrate: { condition: service_completed_successfully }
+      context-core: { condition: service_started }
+      model-core: { condition: service_started }
+      tool-core: { condition: service_started }
+      event-core: { condition: service_started }
+
+  api-gateway:
+    <<: *service
+    build:
+      context: ../..
+      args: { PACKAGE: ./services/api-gateway/cmd/server }
+    environment:
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      GATEWAY_HTTP_ADDR: :8080
+      HARNESS_CORE_GRPC_TARGET: harness-core:9100
+      GATEWAY_ALLOW_INSECURE: "true"
+    ports: ["${HARNESSX_HTTP_PORT:-8080}:8080"]
+    depends_on:
+      harness-core: { condition: service_started }
+
+volumes:
+  postgres-data:
+  volume-data:
+
+networks:
+  harnessx:

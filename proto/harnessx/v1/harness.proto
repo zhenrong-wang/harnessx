@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+
+service HarnessService {
+  rpc CreateRun(CreateRunRequest) returns (Run);
+  rpc StreamRun(CreateRunRequest) returns (stream Event);
+  rpc GetRun(GetRunRequest) returns (Run);
+  rpc CancelRun(CancelRunRequest) returns (CancelRunResponse);
+  rpc ListRunEvents(ListRunEventsRequest) returns (ListRunEventsResponse);
+}
+
+message CreateRunRequest {
+  RequestContext context = 1;
+  string input = 2;
+  string instructions = 3;
+  repeated string models = 4;
+  repeated ToolDefinition tools = 5;
+  int32 max_steps = 6;
+  int32 max_output_tokens = 7;
+  string volume_id = 8;
+  map<string, string> metadata = 9;
+}
+
+message GetRunRequest { RequestContext context = 1; string run_id = 2; }
+message CancelRunRequest { RequestContext context = 1; string run_id = 2; }
+message CancelRunResponse { Run run = 1; bool interrupted = 2; }
+message ListRunEventsRequest { RequestContext context = 1; string run_id = 2; int64 after_sequence = 3; int32 limit = 4; }
+message ListRunEventsResponse { repeated Event events = 1; bool has_more = 2; }

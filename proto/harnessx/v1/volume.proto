@@ -1,0 +1,61 @@
+syntax = "proto3";
+
+package harnessx.v1;
+
+option go_package = "github.com/zhenrong-wang/harnessx/gen/go/harnessx/v1;harnessxv1";
+
+import "harnessx/v1/common.proto";
+import "google/protobuf/timestamp.proto";
+
+service VolumeService {
+  rpc CreateVolume(CreateVolumeRequest) returns (Volume);
+  rpc GetVolume(GetVolumeRequest) returns (Volume);
+  rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse);
+  rpc DeleteVolume(DeleteVolumeRequest) returns (DeleteVolumeResponse);
+  rpc ListEntries(ListEntriesRequest) returns (ListEntriesResponse);
+  rpc ReadFile(ReadFileRequest) returns (ReadFileResponse);
+  rpc WriteFile(WriteFileRequest) returns (WriteFileResponse);
+  rpc DeletePath(DeletePathRequest) returns (DeletePathResponse);
+  rpc CreateDirectory(CreateDirectoryRequest) returns (CreateDirectoryResponse);
+  rpc MintMount(MintMountRequest) returns (MountGrant);
+}
+
+message Volume {
+  string id = 1;
+  string tenant_id = 2;
+  string name = 3;
+  string backend = 4;
+  int64 bytes_used = 5;
+  int64 object_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+  google.protobuf.Timestamp updated_at = 8;
+  map<string, string> metadata = 9;
+}
+
+message CreateVolumeRequest { RequestContext context = 1; string name = 2; string backend = 3; map<string, string> metadata = 4; }
+message GetVolumeRequest { RequestContext context = 1; string volume_id = 2; }
+message ListVolumesRequest { RequestContext context = 1; int32 limit = 2; string page_token = 3; }
+message ListVolumesResponse { repeated Volume volumes = 1; string next_page_token = 2; }
+message DeleteVolumeRequest { RequestContext context = 1; string volume_id = 2; }
+message DeleteVolumeResponse {}
+
+message VolumeEntry {
+  string path = 1;
+  bool directory = 2;
+  int64 size_bytes = 3;
+  google.protobuf.Timestamp modified_at = 4;
+  string digest = 5;
+}
+
+message ListEntriesRequest { RequestContext context = 1; string volume_id = 2; string path = 3; int32 limit = 4; string page_token = 5; }
+message ListEntriesResponse { repeated VolumeEntry entries = 1; string next_page_token = 2; }
+message ReadFileRequest { RequestContext context = 1; string volume_id = 2; string path = 3; int64 offset = 4; int64 limit = 5; }
+message ReadFileResponse { bytes content = 1; string mime_type = 2; int64 total_size = 3; string digest = 4; }
+message WriteFileRequest { RequestContext context = 1; string volume_id = 2; string path = 3; bytes content = 4; string mime_type = 5; string expected_digest = 6; }
+message WriteFileResponse { ArtifactRef artifact = 1; }
+message DeletePathRequest { RequestContext context = 1; string volume_id = 2; string path = 3; bool recursive = 4; }
+message DeletePathResponse {}
+message CreateDirectoryRequest { RequestContext context = 1; string volume_id = 2; string path = 3; }
+message CreateDirectoryResponse {}
+message MintMountRequest { RequestContext context = 1; string volume_id = 2; string path = 3; int64 ttl_seconds = 4; bool writable = 5; }
+message MountGrant { string uri = 1; map<string, string> credentials = 2; google.protobuf.Timestamp expires_at = 3; }

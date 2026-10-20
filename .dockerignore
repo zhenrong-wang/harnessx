@@ -1,0 +1,5 @@
+.git
+.github
+deployments
+*.md
+!db/migrations/*.sql
